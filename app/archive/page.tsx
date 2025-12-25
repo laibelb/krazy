@@ -5,15 +5,26 @@ import Header from '@/components/Header'
 import PlayButton from '@/components/PlayButton'
 import { Calendar, Clock, Info } from 'lucide-react'
 
+// Mark as dynamic to avoid build-time database access
+export const dynamic = 'force-dynamic'
 export const revalidate = 60
 
 async function getAllShiurim() {
-  return prisma.shiur.findMany({
-    orderBy: { pubDate: 'desc' },
-    include: {
-      platformLinks: true,
-    },
-  })
+  try {
+    // Check if DATABASE_URL is available
+    if (!process.env.DATABASE_URL) {
+      return []
+    }
+    return await prisma.shiur.findMany({
+      orderBy: { pubDate: 'desc' },
+      include: {
+        platformLinks: true,
+      },
+    })
+  } catch (error) {
+    console.error('Error fetching shiurim:', error)
+    return []
+  }
 }
 
 export default async function ArchivePage() {

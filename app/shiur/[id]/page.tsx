@@ -7,15 +7,26 @@ import ShiurAudioPlayer from '@/components/ShiurAudioPlayer'
 import PlatformLinks from '@/components/PlatformLinks'
 import SourceSheetViewer from '@/components/SourceSheetViewer'
 
+// Mark as dynamic to avoid build-time database access
+export const dynamic = 'force-dynamic'
 export const revalidate = 60
 
 async function getShiur(id: string) {
-  return prisma.shiur.findUnique({
-    where: { id },
-    include: {
-      platformLinks: true,
-    },
-  })
+  try {
+    // Check if DATABASE_URL is available
+    if (!process.env.DATABASE_URL) {
+      return null
+    }
+    return await prisma.shiur.findUnique({
+      where: { id },
+      include: {
+        platformLinks: true,
+      },
+    })
+  } catch (error) {
+    console.error('Error fetching shiur:', error)
+    return null
+  }
 }
 
 export default async function ShiurPage({ params }: { params: { id: string } }) {

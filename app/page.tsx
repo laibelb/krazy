@@ -6,16 +6,27 @@ import PlayButton from '@/components/PlayButton'
 import PlatformGrid from '@/components/PlatformGrid'
 import { Calendar, Clock, Info } from 'lucide-react'
 
+// Mark as dynamic to avoid build-time database access
+export const dynamic = 'force-dynamic'
 export const revalidate = 60 // Revalidate every 60 seconds
 
 async function getLatestShiurim() {
-  return prisma.shiur.findMany({
-    take: 9,
-    orderBy: { pubDate: 'desc' },
-    include: {
-      platformLinks: true,
-    },
-  })
+  try {
+    // Check if DATABASE_URL is available
+    if (!process.env.DATABASE_URL) {
+      return []
+    }
+    return await prisma.shiur.findMany({
+      take: 9,
+      orderBy: { pubDate: 'desc' },
+      include: {
+        platformLinks: true,
+      },
+    })
+  } catch (error) {
+    console.error('Error fetching shiurim:', error)
+    return []
+  }
 }
 
 export default async function Home() {

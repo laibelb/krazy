@@ -3,6 +3,9 @@ import { NextResponse } from 'next/server'
 const YOUTUBE_CHANNEL_ID = 'UCMrMvXraTLhAtpb0JZQOKhQ'
 const YOUTUBE_API_KEY = process.env.YOUTUBE_API_KEY
 
+// Mark this route as dynamic
+export const dynamic = 'force-dynamic'
+
 export async function GET(request: Request) {
   try {
     if (!YOUTUBE_API_KEY || YOUTUBE_API_KEY === 'your-youtube-api-key-here') {
@@ -12,7 +15,8 @@ export async function GET(request: Request) {
       )
     }
 
-    const { searchParams } = new URL(request.url)
+    const requestUrl = request.url ? new URL(request.url) : null
+    const searchParams = requestUrl?.searchParams || new URLSearchParams()
     const pageToken = searchParams.get('pageToken') || ''
     const maxResults = parseInt(searchParams.get('maxResults') || '50')
 
@@ -33,13 +37,13 @@ export async function GET(request: Request) {
     }
 
     // Get videos from the uploads playlist
-    let url = `https://www.googleapis.com/youtube/v3/playlistItems?part=snippet,contentDetails&playlistId=${uploadsPlaylistId}&maxResults=${maxResults}&key=${YOUTUBE_API_KEY}`
+    let videosUrl = `https://www.googleapis.com/youtube/v3/playlistItems?part=snippet,contentDetails&playlistId=${uploadsPlaylistId}&maxResults=${maxResults}&key=${YOUTUBE_API_KEY}`
     
     if (pageToken) {
-      url += `&pageToken=${pageToken}`
+      videosUrl += `&pageToken=${pageToken}`
     }
 
-    const videosResponse = await fetch(url)
+    const videosResponse = await fetch(videosUrl)
 
     if (!videosResponse.ok) {
       throw new Error('Failed to fetch videos')
