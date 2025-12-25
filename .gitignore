@@ -38,6 +38,10 @@ next-env.d.ts
 # prisma
 /dev.db
 /dev.db-journal
+prisma/dev.db
+prisma/dev.db-journal
+*.db
+*.db-journal
 
 # embedded git repository
 /rabbikraz.github.io
