@@ -4,9 +4,9 @@ import { prisma } from '@/lib/prisma'
 
 export async function GET() {
   try {
-    // Check if DATABASE_URL is configured
-    if (!process.env.DATABASE_URL) {
-      console.error('DATABASE_URL is not configured')
+    // Check if DATABASE_URL or SUPABASE_DATABASE_URL is configured
+    if (!process.env.DATABASE_URL && !process.env.SUPABASE_DATABASE_URL) {
+      console.error('DATABASE_URL or SUPABASE_DATABASE_URL is not configured')
       return NextResponse.json(
         { error: 'Database not configured', authenticated: false },
         { status: 500 }

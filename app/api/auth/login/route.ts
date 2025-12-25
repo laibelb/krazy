@@ -4,9 +4,9 @@ import { cookies } from 'next/headers'
 
 export async function POST(request: NextRequest) {
   try {
-    // Check if DATABASE_URL is configured
-    if (!process.env.DATABASE_URL) {
-      console.error('DATABASE_URL is not configured')
+    // Check if DATABASE_URL or SUPABASE_DATABASE_URL is configured
+    if (!process.env.DATABASE_URL && !process.env.SUPABASE_DATABASE_URL) {
+      console.error('DATABASE_URL or SUPABASE_DATABASE_URL is not configured')
       return NextResponse.json(
         { error: 'Database not configured. Please check your environment variables.' },
         { status: 500 }
