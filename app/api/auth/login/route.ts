@@ -43,14 +43,22 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ success: true, user: { id: user.id, email: user.email } })
   } catch (error: any) {
     console.error('Login error:', error)
+    console.error('Error details:', {
+      message: error.message,
+      code: error.code,
+      meta: error.meta,
+      DATABASE_URL: process.env.DATABASE_URL ? 'SET' : 'NOT SET',
+      SUPABASE_DATABASE_URL: process.env.SUPABASE_DATABASE_URL ? 'SET' : 'NOT SET',
+    })
     
-    // Return more detailed error in development
-    const errorMessage = process.env.NODE_ENV === 'development'
-      ? error.message || 'Database connection error'
-      : 'Internal server error. Please check your database connection.'
+    // Return detailed error for debugging
+    const errorMessage = error.message || 'Database connection error'
     
     return NextResponse.json(
-      { error: errorMessage },
+      { 
+        error: 'Internal server error. Please check your database connection.',
+        details: process.env.NODE_ENV === 'development' ? errorMessage : undefined
+      },
       { status: 500 }
     )
   }
