@@ -9,20 +9,15 @@ const databaseUrl = process.env.DATABASE_URL || process.env.SUPABASE_DATABASE_UR
 
 if (!databaseUrl) {
   console.error('ERROR: Neither DATABASE_URL nor SUPABASE_DATABASE_URL is set')
+} else {
+  // Set DATABASE_URL for Prisma if we're using SUPABASE_DATABASE_URL
+  if (process.env.SUPABASE_DATABASE_URL && !process.env.DATABASE_URL) {
+    process.env.DATABASE_URL = process.env.SUPABASE_DATABASE_URL
+  }
 }
 
-// Create Prisma client - it will use DATABASE_URL from environment automatically
-// Only override if we have a specific URL to use
-export const prisma = globalForPrisma.prisma ?? (databaseUrl 
-  ? new PrismaClient({
-      datasources: {
-        db: {
-          url: databaseUrl,
-        },
-      },
-    })
-  : new PrismaClient()
-)
+// Prisma will automatically read DATABASE_URL from process.env
+export const prisma = globalForPrisma.prisma ?? new PrismaClient()
 
 if (process.env.NODE_ENV !== 'production') globalForPrisma.prisma = prisma
 
