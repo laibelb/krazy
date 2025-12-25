@@ -46,3 +46,9 @@ prisma/dev.db-journal
 # embedded git repository
 /rabbikraz.github.io
 
+# netlify
+.netlify
+
+
+# Local Netlify folder
+.netlify
