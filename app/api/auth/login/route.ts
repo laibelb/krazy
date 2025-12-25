@@ -4,6 +4,15 @@ import { cookies } from 'next/headers'
 
 export async function POST(request: NextRequest) {
   try {
+    // Check if DATABASE_URL is configured
+    if (!process.env.DATABASE_URL) {
+      console.error('DATABASE_URL is not configured')
+      return NextResponse.json(
+        { error: 'Database not configured. Please check your environment variables.' },
+        { status: 500 }
+      )
+    }
+
     const { email, password } = await request.json()
 
     if (!email || !password) {
@@ -32,10 +41,16 @@ export async function POST(request: NextRequest) {
     })
 
     return NextResponse.json({ success: true, user: { id: user.id, email: user.email } })
-  } catch (error) {
+  } catch (error: any) {
     console.error('Login error:', error)
+    
+    // Return more detailed error in development
+    const errorMessage = process.env.NODE_ENV === 'development'
+      ? error.message || 'Database connection error'
+      : 'Internal server error. Please check your database connection.'
+    
     return NextResponse.json(
-      { error: 'Internal server error' },
+      { error: errorMessage },
       { status: 500 }
     )
   }

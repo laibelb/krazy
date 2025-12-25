@@ -19,6 +19,12 @@ export default function AdminPage() {
       const response = await fetch('/api/auth/check')
       if (response.ok) {
         setIsAuthenticated(true)
+      } else {
+        // If it's a 500 error, there's a database issue
+        if (response.status === 500) {
+          const data = await response.json().catch(() => ({}))
+          console.error('Database error:', data.error)
+        }
       }
     } catch (error) {
       console.error('Auth check failed:', error)

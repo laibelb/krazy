@@ -28,7 +28,10 @@ export default function AdminLogin({ onSuccess }: AdminLoginProps) {
       const data = await response.json()
 
       if (!response.ok) {
-        setError(data.error || 'Login failed')
+        // Show more detailed error message
+        const errorMsg = data.error || 'Login failed'
+        setError(errorMsg)
+        console.error('Login error:', errorMsg)
         return
       }
 
