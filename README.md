@@ -83,8 +83,6 @@ To enable the playlists and videos pages, you need a YouTube Data API key:
 4. Go to "Credentials" → "Create Credentials" → "API Key"
 5. Copy your API key and add it to `.env` as `YOUTUBE_API_KEY`
 
-See `YOUTUBE_API_SETUP.md` for detailed instructions.
-
 ## Admin Panel
 
 Access the admin panel at `/admin` and log in with your admin credentials.
