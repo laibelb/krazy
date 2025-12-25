@@ -52,3 +52,7 @@ prisma/dev.db-journal
 
 # Local Netlify folder
 .netlify
+
+# Sensitive files
+*.txt
+!README.txt
