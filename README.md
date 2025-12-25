@@ -32,8 +32,8 @@ A modern Next.js website for Rabbi Kraz with admin panel, RSS feed integration, 
 
 1. **Clone the repository:**
    ```bash
-   git clone https://github.com/YOUR_USERNAME/rabbikraz.git
-   cd rabbikraz
+   git clone https://github.com/laibelb/krazy.git
+   cd krazy
    ```
 
 2. **Install dependencies:**
