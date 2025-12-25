@@ -49,10 +49,6 @@ prisma/dev.db-journal
 # netlify
 .netlify
 
-
-# Local Netlify folder
-.netlify
-
 # Sensitive files
 *.txt
 !README.txt
