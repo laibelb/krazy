@@ -16,7 +16,7 @@ A modern Next.js website for Rabbi Kraz with admin panel, RSS feed integration, 
 
 - **Next.js 14** - React framework with App Router
 - **TypeScript** - Type-safe development
-- **Prisma** - Database ORM with SQLite
+- **Prisma** - Database ORM with PostgreSQL (production) / SQLite (development)
 - **Tailwind CSS** - Utility-first CSS framework
 - **YouTube Data API v3** - For playlist and video integration
 
@@ -122,12 +122,116 @@ rabbikraz/
 
 | Variable | Description | Required |
 |----------|-------------|----------|
-| `DATABASE_URL` | SQLite database path | Yes |
+| `DATABASE_URL` | PostgreSQL connection string (production) or SQLite path (development) | Yes |
+| `SUPABASE_DATABASE_URL` | Alternative database URL (used if DATABASE_URL not set) | Optional |
 | `NEXTAUTH_URL` | Base URL for authentication | Yes |
 | `NEXTAUTH_SECRET` | Secret key for JWT tokens | Yes |
 | `RSS_FEED_URL` | RSS feed URL for shiurim | Yes |
 | `YOUTUBE_API_KEY` | YouTube Data API key | Optional (for playlists/videos) |
 | `NEXT_PUBLIC_BASE_URL` | Public base URL | Optional |
+| `ADMIN_SETUP_TOKEN` | Secret token for one-time admin user creation (can be removed after setup) | Optional (for initial setup) |
+
+## Deployment to Netlify
+
+### Prerequisites
+
+1. A GitHub repository with your code
+2. A Netlify account
+3. A PostgreSQL database (recommended: [Supabase](https://supabase.com) or [Neon](https://neon.tech))
+
+### Step-by-Step Deployment
+
+1. **Set up your PostgreSQL database:**
+   - Create a PostgreSQL database (Supabase, Neon, or any PostgreSQL provider)
+   - Get your connection string (it should look like: `postgresql://user:password@host:port/database`)
+   - For Supabase, add `?sslmode=require` to the connection string if not already included
+
+2. **Push your code to GitHub:**
+   ```bash
+   git add .
+   git commit -m "Prepare for Netlify deployment"
+   git push origin main
+   ```
+
+3. **Deploy to Netlify:**
+   - Go to [Netlify](https://app.netlify.com)
+   - Click "Add new site" → "Import an existing project"
+   - Connect your GitHub repository
+   - Netlify will auto-detect Next.js settings
+
+4. **Configure Environment Variables in Netlify:**
+   - Go to Site settings → Environment variables
+   - Add the following variables:
+     ```
+     DATABASE_URL=postgresql://user:password@host:port/database?sslmode=require
+     NEXTAUTH_URL=https://your-site-name.netlify.app
+     NEXTAUTH_SECRET=generate-a-random-secret-string-here
+     RSS_FEED_URL=https://anchor.fm/s/d89491c4/podcast/rss
+     NEXT_PUBLIC_BASE_URL=https://your-site-name.netlify.app
+     YOUTUBE_API_KEY=your-youtube-api-key (optional)
+     ```
+   - **Important:** Generate a secure random string for `NEXTAUTH_SECRET` (you can use: `openssl rand -base64 32`)
+
+5. **Create Admin User:**
+   After the first deployment, create an admin user using the setup API endpoint:
+   
+   **Step 1:** Add `ADMIN_SETUP_TOKEN` to your Netlify environment variables:
+   - Generate a secure random token (e.g., `openssl rand -base64 32`)
+   - Add it as `ADMIN_SETUP_TOKEN` in Netlify environment variables
+   
+   **Step 2:** Make a POST request to create the admin user:
+   ```bash
+   curl -X POST https://your-site-name.netlify.app/api/admin/create-user \
+     -H "Content-Type: application/json" \
+     -H "X-Setup-Token: your-admin-setup-token-here" \
+     -d '{"email":"admin@example.com","password":"your-secure-password","name":"Admin"}'
+   ```
+   
+   Or use any HTTP client (Postman, Insomnia, etc.) with:
+   - URL: `https://your-site-name.netlify.app/api/admin/create-user`
+   - Method: POST
+   - Headers: 
+     - `Content-Type: application/json`
+     - `X-Setup-Token: your-admin-setup-token-here`
+   - Body:
+     ```json
+     {
+       "email": "admin@example.com",
+       "password": "your-secure-password",
+       "name": "Admin"
+     }
+     ```
+   
+   **Step 3:** After creating your admin user, you can optionally remove the `ADMIN_SETUP_TOKEN` environment variable to disable this endpoint for security.
+
+6. **Trigger a new deployment:**
+   - After setting environment variables, go to Deploys → Trigger deploy → Deploy site
+   - The build will run migrations automatically
+
+### Post-Deployment Checklist
+
+- [ ] Verify the site loads correctly
+- [ ] Test the admin login at `/admin`
+- [ ] Verify database migrations ran successfully (check build logs)
+- [ ] Test RSS sync functionality
+- [ ] Verify all API routes work correctly
+
+### Troubleshooting
+
+**Database connection errors:**
+- Ensure `DATABASE_URL` includes `?sslmode=require` for Supabase
+- Check that your database allows connections from Netlify's IP ranges
+- Verify the connection string is correct
+
+**Admin login not working:**
+- Ensure you've created an admin user
+- Check that the database has the User table
+- Verify cookies are working (check browser console)
+
+**Build failures:**
+- Check build logs in Netlify dashboard
+- Ensure all environment variables are set
+- Verify Node.js version is 18 (set in netlify.toml)
 
 ## Contributing
 
