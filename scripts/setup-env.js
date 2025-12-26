@@ -1,7 +1,7 @@
 // Setup script to ensure DATABASE_URL is set from Supabase extension variables
 // This runs before Prisma commands during build
 
-console.log('🔍 Checking for database connection string...')
+console.log('🔍 Auto-configuring database connection from Supabase extension...')
 
 // Log all Supabase-related env vars (without values for security)
 const supabaseVars = Object.keys(process.env).filter(k => 
@@ -9,26 +9,21 @@ const supabaseVars = Object.keys(process.env).filter(k =>
 )
 console.log('📋 Available env vars:', supabaseVars.join(', ') || 'none')
 
-// Check if SUPABASE_DATABASE_URL is a PostgreSQL connection string
-let dbUrl = process.env.SUPABASE_DATABASE_URL
+let dbUrl = null
 
-// If SUPABASE_DATABASE_URL exists but doesn't start with postgresql://, it might be the project URL
-// In that case, we need to get the actual connection string from Supabase
-if (dbUrl && !dbUrl.startsWith('postgresql://') && !dbUrl.startsWith('postgres://')) {
-  console.warn('⚠️  SUPABASE_DATABASE_URL is not a PostgreSQL connection string')
-  console.warn('⚠️  It appears to be:', dbUrl.substring(0, 50) + '...')
-  console.warn('⚠️  You need to get the actual PostgreSQL connection string from Supabase')
-  dbUrl = null
-}
-
-// Check other possible variables
-if (!dbUrl || !dbUrl.startsWith('postgres')) {
+// First, check if we already have a valid PostgreSQL connection string
+const existingDbUrl = process.env.DATABASE_URL
+if (existingDbUrl && existingDbUrl.startsWith('postgres')) {
+  dbUrl = existingDbUrl
+  console.log('✅ Using existing DATABASE_URL')
+} else {
+  // Check other possible variables that might have connection strings
   const possibleVars = [
-    'DATABASE_URL',
     'POSTGRES_URL',
     'POSTGRES_PRISMA_URL',
     'POSTGRES_URL_NON_POOLING',
-    'SUPABASE_POSTGRES_URL'
+    'SUPABASE_POSTGRES_URL',
+    'SUPABASE_DATABASE_URL'
   ]
   
   for (const varName of possibleVars) {
@@ -36,6 +31,39 @@ if (!dbUrl || !dbUrl.startsWith('postgres')) {
       dbUrl = process.env[varName]
       console.log(`✅ Found PostgreSQL connection string in ${varName}`)
       break
+    }
+  }
+  
+  // If SUPABASE_DATABASE_URL is the project URL (not a connection string), construct it
+  const supabaseProjectUrl = process.env.SUPABASE_DATABASE_URL
+  if (!dbUrl && supabaseProjectUrl && !supabaseProjectUrl.startsWith('postgres')) {
+    console.log('🔧 Constructing connection string from Supabase project URL...')
+    
+    // Extract project ID from URL like https://xkvfpsycjfkfoivmfwxd.supabase.co
+    const projectMatch = supabaseProjectUrl.match(/https?:\/\/([^.]+)\.supabase\.co/)
+    if (projectMatch) {
+      const projectId = projectMatch[1]
+      console.log(`✅ Extracted project ID: ${projectId}`)
+      
+      // Try to extract password from existing DATABASE_URL if it exists
+      let password = null
+      if (existingDbUrl) {
+        const passwordMatch = existingDbUrl.match(/postgres(?:ql)?:\/\/[^:]+:([^@]+)@/)
+        if (passwordMatch) {
+          password = passwordMatch[1]
+          console.log('✅ Extracted password from existing DATABASE_URL')
+        }
+      }
+      
+      // If we have password, construct pooler connection string
+      if (password) {
+        // Use pooler connection (port 6543) - more reliable for serverless
+        dbUrl = `postgresql://postgres:${password}@aws-0-us-east-1.pooler.supabase.com:6543/postgres`
+        console.log('✅ Constructed pooler connection string')
+      } else {
+        console.warn('⚠️  Password not found - cannot auto-construct connection string')
+        console.warn('⚠️  Please set DATABASE_URL manually in Netlify environment variables')
+      }
     }
   }
 }
