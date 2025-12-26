@@ -115,8 +115,13 @@ async function getVideos() {
   }
 }
 
-export default async function VideosPage() {
+export default async function VideosPage({
+  searchParams,
+}: {
+  searchParams: { page?: string }
+}) {
   const allVideos = await getVideos()
+  const page = parseInt(searchParams.page || '1', 10)
 
   return (
     <div className="min-h-screen flex flex-col bg-gray-50/50">
@@ -127,7 +132,7 @@ export default async function VideosPage() {
             Videos
           </h1>
           <p className="text-muted-foreground">
-            Watch shiurim and shorts on YouTube
+            Watch shiurim and shorts on YouTube ({allVideos.length} videos)
           </p>
         </div>
 
@@ -145,7 +150,7 @@ export default async function VideosPage() {
             </a>
           </div>
         ) : (
-          <VideosGrid initialVideos={allVideos} />
+          <VideosGrid initialVideos={allVideos} currentPage={page} />
         )}
       </main>
     </div>

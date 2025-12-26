@@ -1,13 +1,18 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
+import { useRouter } from 'next/navigation'
+import Link from 'next/link'
 import { ExternalLink, Play, Clock, Eye, Calendar } from 'lucide-react'
 import { formatDate } from '@/lib/utils'
 import VideoFilters from './VideoFilters'
 
 interface VideosGridProps {
   initialVideos: any[]
+  currentPage?: number
 }
+
+const ITEMS_PER_PAGE = 18
 
 function formatViewCount(count: number): string {
   if (count >= 1000000) {
@@ -19,8 +24,31 @@ function formatViewCount(count: number): string {
   return count.toString()
 }
 
-export default function VideosGrid({ initialVideos }: VideosGridProps) {
+export default function VideosGrid({ initialVideos, currentPage = 1 }: VideosGridProps) {
+  const router = useRouter()
   const [filteredVideos, setFilteredVideos] = useState(initialVideos)
+  const [page, setPage] = useState(currentPage)
+  
+  // Update page when currentPage prop changes
+  useEffect(() => {
+    setPage(currentPage)
+  }, [currentPage])
+  
+  // Reset to page 1 when filter changes
+  useEffect(() => {
+    if (page > 1 && filteredVideos.length > 0) {
+      const totalPages = Math.ceil(filteredVideos.length / ITEMS_PER_PAGE)
+      if (page > totalPages) {
+        setPage(1)
+        router.replace('/videos?page=1')
+      }
+    }
+  }, [filteredVideos, page, router])
+  
+  const totalPages = Math.ceil(filteredVideos.length / ITEMS_PER_PAGE)
+  const startIndex = (page - 1) * ITEMS_PER_PAGE
+  const endIndex = startIndex + ITEMS_PER_PAGE
+  const paginatedVideos = filteredVideos.slice(startIndex, endIndex)
 
   return (
     <>
@@ -31,8 +59,9 @@ export default function VideosGrid({ initialVideos }: VideosGridProps) {
           <p className="text-gray-600">No videos match the selected filter.</p>
         </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {filteredVideos.map((video: any) => (
+        <>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
+            {paginatedVideos.map((video: any) => (
             <a
               key={video.id}
               href={video.videoUrl}
@@ -94,8 +123,64 @@ export default function VideosGrid({ initialVideos }: VideosGridProps) {
                 </div>
               </div>
             </a>
-          ))}
-        </div>
+            ))}
+          </div>
+          
+          {totalPages > 1 && (
+            <div className="flex items-center justify-center gap-2 mt-8">
+              <Link
+                href={`/videos?page=${Math.max(1, page - 1)}`}
+                className={`px-4 py-2 rounded-lg border transition-colors ${
+                  page === 1
+                    ? 'bg-gray-100 text-gray-400 cursor-not-allowed border-gray-200'
+                    : 'bg-white text-primary hover:bg-gray-50 border-gray-200'
+                }`}
+              >
+                Previous
+              </Link>
+              
+              <div className="flex items-center gap-1">
+                {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+                  let pageNum: number
+                  if (totalPages <= 5) {
+                    pageNum = i + 1
+                  } else if (page <= 3) {
+                    pageNum = i + 1
+                  } else if (page >= totalPages - 2) {
+                    pageNum = totalPages - 4 + i
+                  } else {
+                    pageNum = page - 2 + i
+                  }
+                  
+                  return (
+                    <Link
+                      key={pageNum}
+                      href={`/videos?page=${pageNum}`}
+                      className={`px-4 py-2 rounded-lg border transition-colors ${
+                        pageNum === page
+                          ? 'bg-primary text-white border-primary'
+                          : 'bg-white text-primary hover:bg-gray-50 border-gray-200'
+                      }`}
+                    >
+                      {pageNum}
+                    </Link>
+                  )
+                })}
+              </div>
+              
+              <Link
+                href={`/videos?page=${Math.min(totalPages, page + 1)}`}
+                className={`px-4 py-2 rounded-lg border transition-colors ${
+                  page === totalPages
+                    ? 'bg-gray-100 text-gray-400 cursor-not-allowed border-gray-200'
+                    : 'bg-white text-primary hover:bg-gray-50 border-gray-200'
+                }`}
+              >
+                Next
+              </Link>
+            </div>
+          )}
+        </>
       )}
     </>
   )
