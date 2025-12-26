@@ -47,8 +47,17 @@ if (dbUrl && dbUrl.startsWith('postgres')) {
     console.log('✅ Set DATABASE_URL')
   }
   
-  // Add SSL requirement and pgbouncer for Supabase connections
+  // Fix Supabase pooler connection string format
   let url = process.env.DATABASE_URL
+  
+  // For pooler connections, the username should be just 'postgres', not 'postgres.PROJECT_REF'
+  // Fix the username format if it's wrong
+  if (url.includes(':6543') && url.includes('postgres.')) {
+    // Replace postgres.PROJECT_REF with just postgres for pooler
+    url = url.replace(/postgres\.[^:]+:/, 'postgres:')
+    console.log('✅ Fixed pooler username format')
+  }
+  
   const params = []
   
   // Add pgbouncer=true for pooler connections (port 6543)
@@ -63,9 +72,11 @@ if (dbUrl && dbUrl.startsWith('postgres')) {
   
   if (params.length > 0) {
     const separator = url.includes('?') ? '&' : '?'
-    process.env.DATABASE_URL = `${url}${separator}${params.join('&')}`
+    url = `${url}${separator}${params.join('&')}`
     console.log('✅ Added parameters to DATABASE_URL:', params.join(', '))
   }
+  
+  process.env.DATABASE_URL = url
   console.log('✅ DATABASE_URL is configured')
 } else {
   console.error('❌ No valid PostgreSQL connection string found!')
