@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server'
-import { PrismaClient } from '@prisma/client'
+import { prisma } from '@/lib/prisma'
 
 export const dynamic = 'force-dynamic'
 
@@ -11,36 +11,102 @@ export const dynamic = 'force-dynamic'
  */
 export async function GET() {
   try {
-    const prisma = new PrismaClient()
-    
-    // Try to connect and create tables if they don't exist
-    // This will create the schema based on your Prisma schema
-    await prisma.$connect()
-    
-    // Test query to ensure tables exist
+    // Test if tables exist
     await prisma.user.findFirst()
-    
-    await prisma.$disconnect()
     
     return NextResponse.json({ 
       success: true, 
-      message: 'Database schema is set up correctly' 
+      message: 'Database schema is already set up' 
     })
   } catch (error: any) {
-    // If tables don't exist, we need to push the schema
-    if (error.code === 'P2021' || error.message?.includes('does not exist')) {
+    // If tables don't exist, create them using raw SQL
+    if (error.code === 'P2021' || error.code === '42P01' || error.message?.includes('does not exist')) {
       try {
-        const { execSync } = require('child_process')
-        execSync('npx prisma db push', { stdio: 'inherit' })
+        // Create tables using raw SQL from migration
+        await prisma.$executeRawUnsafe(`
+          CREATE TABLE IF NOT EXISTS "User" (
+            "id" TEXT NOT NULL,
+            "email" TEXT NOT NULL,
+            "password" TEXT NOT NULL,
+            "name" TEXT,
+            "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            "updatedAt" TIMESTAMP(3) NOT NULL,
+            CONSTRAINT "User_pkey" PRIMARY KEY ("id")
+          );
+        `)
+        
+        await prisma.$executeRawUnsafe(`
+          CREATE TABLE IF NOT EXISTS "Shiur" (
+            "id" TEXT NOT NULL,
+            "guid" TEXT NOT NULL,
+            "title" TEXT NOT NULL,
+            "description" TEXT,
+            "blurb" TEXT,
+            "audioUrl" TEXT NOT NULL,
+            "sourceDoc" TEXT,
+            "pubDate" TIMESTAMP(3) NOT NULL,
+            "duration" TEXT,
+            "link" TEXT,
+            "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            "updatedAt" TIMESTAMP(3) NOT NULL,
+            CONSTRAINT "Shiur_pkey" PRIMARY KEY ("id")
+          );
+        `)
+        
+        await prisma.$executeRawUnsafe(`
+          CREATE TABLE IF NOT EXISTS "PlatformLinks" (
+            "id" TEXT NOT NULL,
+            "shiurId" TEXT NOT NULL,
+            "youtube" TEXT,
+            "youtubeMusic" TEXT,
+            "spotify" TEXT,
+            "apple" TEXT,
+            "amazon" TEXT,
+            "pocket" TEXT,
+            "twentyFourSix" TEXT,
+            "castbox" TEXT,
+            "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            "updatedAt" TIMESTAMP(3) NOT NULL,
+            CONSTRAINT "PlatformLinks_pkey" PRIMARY KEY ("id")
+          );
+        `)
+        
+        // Create indexes
+        await prisma.$executeRawUnsafe(`
+          CREATE UNIQUE INDEX IF NOT EXISTS "User_email_key" ON "User"("email");
+        `)
+        
+        await prisma.$executeRawUnsafe(`
+          CREATE UNIQUE INDEX IF NOT EXISTS "Shiur_guid_key" ON "Shiur"("guid");
+        `)
+        
+        await prisma.$executeRawUnsafe(`
+          CREATE UNIQUE INDEX IF NOT EXISTS "PlatformLinks_shiurId_key" ON "PlatformLinks"("shiurId");
+        `)
+        
+        // Create foreign key
+        await prisma.$executeRawUnsafe(`
+          DO $$ 
+          BEGIN
+            IF NOT EXISTS (
+              SELECT 1 FROM pg_constraint WHERE conname = 'PlatformLinks_shiurId_fkey'
+            ) THEN
+              ALTER TABLE "PlatformLinks" 
+              ADD CONSTRAINT "PlatformLinks_shiurId_fkey" 
+              FOREIGN KEY ("shiurId") REFERENCES "Shiur"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+            END IF;
+          END $$;
+        `)
+        
         return NextResponse.json({ 
           success: true, 
-          message: 'Database schema has been created' 
+          message: 'Database schema has been created successfully' 
         })
-      } catch (pushError: any) {
+      } catch (createError: any) {
         return NextResponse.json({ 
           success: false, 
-          error: 'Failed to set up database schema',
-          details: pushError.message 
+          error: 'Failed to create database schema',
+          details: createError.message 
         }, { status: 500 })
       }
     }
@@ -48,7 +114,8 @@ export async function GET() {
     return NextResponse.json({ 
       success: false, 
       error: 'Database connection error',
-      details: error.message 
+      details: error.message,
+      code: error.code
     }, { status: 500 })
   }
 }
