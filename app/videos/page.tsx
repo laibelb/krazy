@@ -74,8 +74,8 @@ async function getVideos() {
           durationStr = `${minutes}:${seconds.toString().padStart(2, '0')}`
         }
 
-        const title = video.snippet.title.toLowerCase()
-        const isShort = totalSeconds < 60 || title.includes('#shorts') || title.includes('shorts')
+        // Shorts are videos shorter than 3 minutes (180 seconds)
+        const isShort = totalSeconds < 180
         
         return {
           id: video.id,
