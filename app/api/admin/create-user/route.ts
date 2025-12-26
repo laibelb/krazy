@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createUser } from '@/lib/auth'
 
+export const dynamic = 'force-dynamic'
+
 /**
  * One-time admin user creation endpoint
  * Protected by ADMIN_SETUP_TOKEN environment variable
