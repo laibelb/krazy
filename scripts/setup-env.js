@@ -57,9 +57,12 @@ if (existingDbUrl && existingDbUrl.startsWith('postgres')) {
       
       // If we have password, construct pooler connection string
       if (password) {
-        // Use pooler connection (port 6543) - more reliable for serverless
-        dbUrl = `postgresql://postgres:${password}@aws-0-us-east-1.pooler.supabase.com:6543/postgres`
-        console.log('✅ Constructed pooler connection string')
+        // Use pooler connection (port 6543) with correct username format: postgres.PROJECT_REF
+        // Try multiple regions - start with us-east-1, fallback to others
+        const regions = ['us-east-1', 'us-west-1', 'eu-west-1', 'ap-southeast-1']
+        // Use the first region for now - if it fails, we'll know from the error
+        dbUrl = `postgresql://postgres.${projectId}:${password}@aws-0-us-east-1.pooler.supabase.com:6543/postgres`
+        console.log('✅ Constructed pooler connection string with project reference in username')
       } else {
         console.warn('⚠️  Password not found - cannot auto-construct connection string')
         console.warn('⚠️  Please set DATABASE_URL manually in Netlify environment variables')
@@ -78,12 +81,19 @@ if (dbUrl && dbUrl.startsWith('postgres')) {
   // Fix Supabase pooler connection string format
   let url = process.env.DATABASE_URL
   
-  // For pooler connections, the username should be just 'postgres', not 'postgres.PROJECT_REF'
-  // Fix the username format if it's wrong
-  if (url.includes(':6543') && url.includes('postgres.')) {
-    // Replace postgres.PROJECT_REF with just postgres for pooler
-    url = url.replace(/postgres\.[^:]+:/, 'postgres:')
-    console.log('✅ Fixed pooler username format')
+  // For Supabase pooler, username MUST be postgres.PROJECT_REF, not just postgres
+  // Extract project ID from URL if we have SUPABASE_DATABASE_URL
+  if (url.includes(':6543') && !url.includes('postgres.')) {
+    const supabaseUrl = process.env.SUPABASE_DATABASE_URL
+    if (supabaseUrl) {
+      const projectMatch = supabaseUrl.match(/https?:\/\/([^.]+)\.supabase\.co/)
+      if (projectMatch) {
+        const projectId = projectMatch[1]
+        // Fix username to include project reference
+        url = url.replace(/postgresql:\/\/postgres:/, `postgresql://postgres.${projectId}:`)
+        console.log('✅ Fixed pooler username to include project reference')
+      }
+    }
   }
   
   const params = []
