@@ -32,33 +32,50 @@ async function getVideos() {
       return []
     }
 
-    // Get videos from the uploads playlist
-    const videosResponse = await fetch(
-      `https://www.googleapis.com/youtube/v3/playlistItems?part=snippet,contentDetails&playlistId=${uploadsPlaylistId}&maxResults=50&key=${YOUTUBE_API_KEY}`,
-      { next: { revalidate: 3600 } }
-    )
+    // Fetch all videos using pagination
+    let allVideoIds: string[] = []
+    let nextPageToken: string | undefined = undefined
+    
+    do {
+      let playlistUrl = `https://www.googleapis.com/youtube/v3/playlistItems?part=snippet,contentDetails&playlistId=${uploadsPlaylistId}&maxResults=50&key=${YOUTUBE_API_KEY}`
+      if (nextPageToken) {
+        playlistUrl += `&pageToken=${nextPageToken}`
+      }
+      
+      const videosResponse = await fetch(playlistUrl, { next: { revalidate: 3600 } })
+      
+      if (!videosResponse.ok) {
+        break
+      }
+      
+      const videosData = await videosResponse.json()
+      const pageVideoIds = videosData.items.map((item: any) => item.contentDetails.videoId)
+      allVideoIds = allVideoIds.concat(pageVideoIds)
+      nextPageToken = videosData.nextPageToken
+    } while (nextPageToken)
 
-    if (!videosResponse.ok) {
-      return []
+    // YouTube API limits video details to 50 IDs per request, so batch them
+    const allVideos: any[] = []
+    for (let i = 0; i < allVideoIds.length; i += 50) {
+      const batchIds = allVideoIds.slice(i, i + 50)
+      const videoIds = batchIds.join(',')
+
+      // Get detailed video information for this batch
+      const videoDetailsResponse = await fetch(
+        `https://www.googleapis.com/youtube/v3/videos?part=snippet,contentDetails,statistics&id=${videoIds}&key=${YOUTUBE_API_KEY}`,
+        { next: { revalidate: 3600 } }
+      )
+
+      if (!videoDetailsResponse.ok) {
+        continue
+      }
+
+      const videoDetailsData = await videoDetailsResponse.json()
+      allVideos.push(...videoDetailsData.items)
     }
-
-    const videosData = await videosResponse.json()
-    const videoIds = videosData.items.map((item: any) => item.contentDetails.videoId).join(',')
-
-    // Get detailed video information
-    const videoDetailsResponse = await fetch(
-      `https://www.googleapis.com/youtube/v3/videos?part=snippet,contentDetails,statistics&id=${videoIds}&key=${YOUTUBE_API_KEY}`,
-      { next: { revalidate: 3600 } }
-    )
-
-    if (!videoDetailsResponse.ok) {
-      return []
-    }
-
-    const videoDetailsData = await videoDetailsResponse.json()
 
     // Format all videos and mark them as shiurim or shorts
-    const videos = videoDetailsData.items
+    const videos = allVideos
       .map((video: any) => {
         const duration = video.contentDetails.duration
         const match = duration.match(/PT(?:(\d+)H)?(?:(\d+)M)?(?:(\d+)S)?/)
