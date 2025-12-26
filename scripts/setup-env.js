@@ -47,12 +47,24 @@ if (dbUrl && dbUrl.startsWith('postgres')) {
     console.log('✅ Set DATABASE_URL')
   }
   
-  // Add SSL requirement for Supabase connections if needed
-  const url = process.env.DATABASE_URL
+  // Add SSL requirement and pgbouncer for Supabase connections
+  let url = process.env.DATABASE_URL
+  const params = []
+  
+  // Add pgbouncer=true for pooler connections (port 6543)
+  if (url.includes(':6543') && !url.includes('pgbouncer=')) {
+    params.push('pgbouncer=true')
+  }
+  
+  // Add SSL mode for Supabase
   if ((url.includes('supabase.co') || url.includes('supabase.com')) && !url.includes('sslmode=')) {
+    params.push('sslmode=require')
+  }
+  
+  if (params.length > 0) {
     const separator = url.includes('?') ? '&' : '?'
-    process.env.DATABASE_URL = `${url}${separator}sslmode=require`
-    console.log('✅ Added SSL mode to DATABASE_URL')
+    process.env.DATABASE_URL = `${url}${separator}${params.join('&')}`
+    console.log('✅ Added parameters to DATABASE_URL:', params.join(', '))
   }
   console.log('✅ DATABASE_URL is configured')
 } else {
